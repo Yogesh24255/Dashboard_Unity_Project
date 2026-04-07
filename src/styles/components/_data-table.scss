@@ -1,0 +1,91 @@
+.table-wrapper {
+  margin-top: 20px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 20px;
+  overflow: auto;
+  max-height: 460px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.table-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+  background: linear-gradient(180deg, #f8fbff, #f5f8ff);
+  color: #4b5563;
+  font-size: 0.85rem;
+  font-weight: 700;
+
+  span {
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(37, 99, 235, 0.08);
+    color: #1d4ed8;
+  }
+}
+
+.csv-table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 0.9rem;
+
+  thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: linear-gradient(180deg, #eff6ff, #eaf2ff);
+    font-weight: 700;
+    color: #111827;
+  }
+
+  th,
+  td {
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    padding: 10px 12px;
+    text-align: left;
+    white-space: nowrap;
+    min-width: 120px;
+    max-width: 260px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    background: #ffffff;
+  }
+
+  .csv-table__index {
+    min-width: 56px;
+    max-width: 56px;
+    text-align: center;
+    position: sticky;
+    left: 0;
+    z-index: 3;
+    background: linear-gradient(180deg, #eff6ff, #eaf2ff);
+    color: #374151;
+    font-weight: 700;
+  }
+
+  tbody .csv-table__index {
+    z-index: 1;
+  }
+
+  td.is-number {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    color: #0f172a;
+    font-weight: 600;
+  }
+
+  tbody tr:nth-child(even) td,
+  tbody tr:nth-child(even) .csv-table__index {
+    background: #fbfdff;
+  }
+
+  tbody tr:hover td,
+  tbody tr:hover .csv-table__index {
+    background: #e8f0ff;
+  }
+}
