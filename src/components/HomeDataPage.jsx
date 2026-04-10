@@ -3,6 +3,8 @@ import {
   buildDatasetFromCsvText,
   downloadDatasetAsExcel,
   isNumericValue,
+  getCachedDataset,
+  setCachedDataset,
 } from '../utils/csvDataUtils'
 import defaultCsvText from '../files/DataCsvFile.csv?raw'
 
@@ -34,7 +36,30 @@ function HomeDataPage({
   }
 
   const handleUseExistingData = () => {
-    processCsvText(defaultCsvText, 'DataCsvFile.csv')
+    const cached = getCachedDataset()
+    if (cached) {
+      onDataLoaded({
+        fileName: 'DataCsvFile.csv',
+        headers: cached.headers,
+        rows: cached.rows,
+      })
+      return
+    }
+
+    const dataset = buildDatasetFromCsvText(defaultCsvText)
+
+    if (dataset.error) {
+      onError(dataset.error)
+      return
+    }
+
+    setCachedDataset(dataset.headers, dataset.rows)
+
+    onDataLoaded({
+      fileName: 'DataCsvFile.csv',
+      headers: dataset.headers,
+      rows: dataset.rows,
+    })
   }
 
   const handleChooseUpload = () => {
@@ -189,7 +214,12 @@ function HomeDataPage({
                       #
                     </th>
                     {csvHeaders.map((header, index) => (
-                      <th key={`${header}-${index}`}>{header}</th>
+                      <th
+                        key={`${header}-${index}`}
+                        className={index === 0 ? 'csv-table__name' : ''}
+                      >
+                        {header}
+                      </th>
                     ))}
                   </tr>
                 </thead>
@@ -202,7 +232,13 @@ function HomeDataPage({
                       {row.map((cell, cellIndex) => (
                         <td
                           key={`cell-${rowIndex}-${cellIndex}`}
-                          className={isNumericValue(cell) ? 'is-number' : ''}
+                          className={
+                            cellIndex === 0
+                              ? 'csv-table__name'
+                              : isNumericValue(cell)
+                                ? 'is-number'
+                                : ''
+                          }
                         >
                           {cell}
                         </td>

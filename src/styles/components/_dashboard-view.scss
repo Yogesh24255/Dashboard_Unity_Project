@@ -1,8 +1,8 @@
 .tabs {
   display: flex;
   width: 100%;
-  justify-content: center;
-  align-items: center;
+  justify-content: space-between;
+  align-items: stretch;
   gap: 10px;
   margin-bottom: 28px;
   padding: 10px;
@@ -12,9 +12,21 @@
   box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
   position: relative;
 
+  &__list {
+    flex: 1 1 auto;
+    display: flex;
+    gap: 10px;
+    width: 100%;
+  }
+
+  &__item {
+    flex: 1 1 0;
+    min-width: 0;
+    position: relative;
+  }
+
   &__button {
-    flex: 1 1 50%;
-    max-width: 50%;
+    width: 100%;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -62,11 +74,55 @@
       }
     }
   }
+
+  &__add {
+    width: 48px;
+    min-width: 48px;
+    border: 1px solid rgba(37, 99, 235, 0.2);
+    border-radius: 14px;
+    background: rgba(37, 99, 235, 0.08);
+    color: #1d4ed8;
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+
+    &:hover {
+      background: rgba(37, 99, 235, 0.14);
+      transform: translateY(-1px);
+    }
+  }
+
+  &__remove {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 20px;
+    height: 20px;
+    border: none;
+    border-radius: 999px;
+    background: rgba(239, 68, 68, 0.12);
+    color: #b91c1c;
+    font-size: 0.95rem;
+    line-height: 1;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    &:hover {
+      background: rgba(239, 68, 68, 0.2);
+    }
+  }
 }
 
 @media (max-width: 900px) {
   .tabs {
     gap: 8px;
+
+    &__list {
+      gap: 8px;
+    }
 
     &__button {
       flex: 1;
@@ -77,10 +133,118 @@
 
 @media (max-width: 640px) {
   .tabs {
-    flex-direction: column;
+    flex-direction: row;
+    align-items: stretch;
+
+    &__list {
+      flex-wrap: wrap;
+    }
+
+    &__item {
+      flex: 1 1 calc(50% - 4px);
+    }
 
     &__button {
       width: 100%;
     }
+
+    &__add {
+      min-height: 48px;
+    }
   }
+}
+.dynamic-dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+  margin-bottom: 20px;
+
+  &__title {
+    flex: 1 1 auto;
+
+    h2 {
+      margin: 0 0 8px 0;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #111827;
+    }
+
+    p {
+      margin: 0;
+      font-size: 0.95rem;
+      color: #6b7280;
+    }
+  }
+
+  &__toggle {
+    display: flex;
+    align-items: center;
+    padding-top: 8px;
+  }
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.toggle-input {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 48px;
+  height: 28px;
+  background: #e5e7eb;
+  border: 2px solid #d1d5db;
+  border-radius: 14px;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.3s ease;
+  padding: 0;
+  margin: 0;
+
+  &:checked {
+    background: #2563eb;
+    border-color: #1d4ed8;
+  }
+
+  &::before {
+    content: '';
+    position: absolute;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: white;
+    top: 50%;
+    left: 3px;
+    transform: translateY(-50%);
+    transition: left 0.3s ease;
+  }
+
+  &:checked::before {
+    left: 23px;
+  }
+
+  &:hover {
+    border-color: #9ca3af;
+  }
+
+  &:checked:hover {
+    border-color: #1d4ed8;
+  }
+
+  &:focus {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+  }
+}
+
+.toggle-text {
+  font-weight: 600;
+  color: #374151;
+  font-size: 0.95rem;
+  white-space: nowrap;
 }

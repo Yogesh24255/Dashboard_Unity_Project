@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { areNumberArraysEqual, isSerialLikeHeader } from '../utils/chartUtils'
 import {
   ROWS_PER_PAGE,
+  aggregateRowsByFirstColumn,
   createSequentialIndices,
   getRowLabel,
   getStartIndex,
@@ -70,12 +71,17 @@ export function useDashboard1(csvHeaders, csvRows) {
     [csvHeaders, selectedMetricHeader],
   )
 
+  const aggregatedRows = useMemo(
+    () => aggregateRowsByFirstColumn(csvRows, csvHeaders.length),
+    [csvRows, csvHeaders.length],
+  )
+
   const dashboardOneRows = useMemo(() => {
     if (categoryColumnIndex < 0 || metricColumnIndex < 0) {
       return []
     }
 
-    return csvRows.map((row, rowIndex) => {
+    return aggregatedRows.map((row, rowIndex) => {
       const label = getRowLabel(row[categoryColumnIndex], rowIndex)
       const numericValue = parseNumericValue(row[metricColumnIndex], 0)
 
@@ -84,7 +90,7 @@ export function useDashboard1(csvHeaders, csvRows) {
         metricValue: Number.isFinite(numericValue) ? numericValue : 0,
       }
     })
-  }, [csvRows, categoryColumnIndex, metricColumnIndex])
+  }, [aggregatedRows, categoryColumnIndex, metricColumnIndex])
 
   const totalPages = getTotalPages(dashboardOneRows.length, ROWS_PER_PAGE)
 

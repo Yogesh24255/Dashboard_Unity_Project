@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { isSerialLikeHeader, palette } from '../utils/chartUtils'
+import { areNumberArraysEqual, isSerialLikeHeader, palette } from '../utils/chartUtils'
 import {
   ROWS_PER_PAGE,
+  aggregateRowsByFirstColumn,
   createSequentialIndices,
   getRowLabel,
   getStartIndex,
@@ -27,8 +28,13 @@ export function useDashboard2(csvHeaders, csvRows) {
 
   const d2LabelHeader = usableHeaders[0] || ''
 
+  const aggregatedRows = useMemo(
+    () => aggregateRowsByFirstColumn(csvRows, csvHeaders.length),
+    [csvRows, csvHeaders.length],
+  )
+
   const d2MetricHeaders = useMemo(() => {
-    if (!csvRows.length || !csvHeaders.length) {
+    if (!aggregatedRows.length || !csvHeaders.length) {
       return []
     }
 
@@ -37,16 +43,16 @@ export function useDashboard2(csvHeaders, csvRows) {
         return false
       }
 
-      const sampleValues = csvRows
+      const sampleRows = aggregatedRows
         .slice(0, 20)
         .map((row) => row[csvHeaders.indexOf(header)])
         .filter((v) => v !== '' && v !== null && v !== undefined)
 
-      const numericCount = sampleValues.filter((v) => Number.isFinite(parseNumericValue(v, NaN))).length
+      const numericCount = sampleRows.filter((v) => Number.isFinite(parseNumericValue(v, NaN))).length
 
-      return sampleValues.length > 0 && numericCount / sampleValues.length >= 0.5
+      return sampleRows.length > 0 && numericCount / sampleRows.length >= 0.5
     })
-  }, [csvHeaders, csvRows, d2LabelHeader])
+  }, [csvHeaders, aggregatedRows, d2LabelHeader])
 
   useEffect(() => {
     if (!d2MetricHeaders.length) {
@@ -75,7 +81,7 @@ export function useDashboard2(csvHeaders, csvRows) {
       return []
     }
 
-    return csvRows.map((row, rowIndex) => {
+    return aggregatedRows.map((row, rowIndex) => {
       const label = getRowLabel(row[d2LabelColumnIndex], rowIndex)
       const values = d2AppliedMetrics.map((header) => {
         const colIndex = csvHeaders.indexOf(header)
@@ -86,32 +92,72 @@ export function useDashboard2(csvHeaders, csvRows) {
 
       return { label, values }
     })
-  }, [csvRows, d2LabelColumnIndex, d2AppliedMetrics, csvHeaders])
-
-  const d2TotalPages = getTotalPages(d2AllRows.length, ROWS_PER_PAGE)
-  const d2StartIndex = getStartIndex(d2CurrentPage, ROWS_PER_PAGE)
-  const d2PageRows = d2AllRows.slice(d2StartIndex, d2StartIndex + ROWS_PER_PAGE)
+  }, [aggregatedRows, d2LabelColumnIndex, d2AppliedMetrics, csvHeaders])
 
   const d2AllLabels = useMemo(() => d2AllRows.map((row) => row.label), [d2AllRows])
 
   useEffect(() => {
-    if (d2AllLabels.length > 0) {
-      const defaultLabelIndices = createSequentialIndices(Math.min(10, d2AllLabels.length))
-      setD2DraftLabelIndices(defaultLabelIndices)
-      setD2AppliedLabelIndices(defaultLabelIndices)
-    }
+    setD2DraftLabelIndices((previous) => {
+      const filtered = previous.filter((index) => index < d2AllLabels.length)
+      return areNumberArraysEqual(previous, filtered) ? previous : filtered
+    })
+    setD2AppliedLabelIndices((previous) => {
+      if (previous === null) {
+        return null
+      }
+
+      const filtered = previous.filter((index) => index < d2AllLabels.length)
+      if (!filtered.length) {
+        return null
+      }
+
+      return areNumberArraysEqual(previous, filtered) ? previous : filtered
+    })
   }, [d2AllLabels.length])
 
-  const d2DisplayedRows = useMemo(() => {
-    if (d2AppliedLabelIndices === null || d2AppliedLabelIndices.length === 0) {
-      return d2PageRows
+  const d2SelectedRows = useMemo(() => {
+    if (d2AppliedLabelIndices === null) {
+      return d2AllRows
     }
 
-    return d2PageRows.filter((row) => {
-      const rowLabelIndex = d2AllLabels.indexOf(row.label)
-      return d2AppliedLabelIndices.includes(rowLabelIndex)
-    })
-  }, [d2PageRows, d2AppliedLabelIndices, d2AllLabels])
+    return d2AppliedLabelIndices.map((index) => d2AllRows[index]).filter(Boolean)
+  }, [d2AllRows, d2AppliedLabelIndices])
+
+  const d2TotalPages = getTotalPages(d2SelectedRows.length, ROWS_PER_PAGE)
+
+  useEffect(() => {
+    if (d2CurrentPage > d2TotalPages) {
+      setD2CurrentPage(d2TotalPages)
+    }
+  }, [d2CurrentPage, d2TotalPages])
+
+  const d2StartIndex = getStartIndex(d2CurrentPage, ROWS_PER_PAGE)
+  const d2PageRows = useMemo(
+    () => d2SelectedRows.slice(d2StartIndex, d2StartIndex + ROWS_PER_PAGE),
+    [d2SelectedRows, d2StartIndex],
+  )
+
+  const d2PageLabelIndices = useMemo(() => {
+    if (d2AppliedLabelIndices !== null) {
+      return d2AppliedLabelIndices
+    }
+
+    const remainingRows = Math.max(0, d2AllRows.length - d2StartIndex)
+    const count = Math.min(ROWS_PER_PAGE, remainingRows)
+    return createSequentialIndices(count, d2StartIndex)
+  }, [d2AppliedLabelIndices, d2AllRows.length, d2StartIndex])
+
+  useEffect(() => {
+    if (d2AppliedLabelIndices === null && !isD2CustomizeOpen) {
+      setD2DraftLabelIndices((previous) =>
+        areNumberArraysEqual(previous, d2PageLabelIndices) ? previous : d2PageLabelIndices,
+      )
+    }
+  }, [d2PageLabelIndices, d2AppliedLabelIndices, isD2CustomizeOpen])
+
+  const d2DisplayedRows = useMemo(() => {
+    return d2PageRows
+  }, [d2PageRows])
 
   const d2ChartData = {
     labels: d2DisplayedRows.map((row) => row.label),
@@ -190,7 +236,7 @@ export function useDashboard2(csvHeaders, csvRows) {
         return previous
       }
 
-      return [...previous, labelIndex]
+      return [...previous, labelIndex].sort((first, second) => first - second)
     })
   }
 
@@ -199,21 +245,24 @@ export function useDashboard2(csvHeaders, csvRows) {
   }
 
   const handleD2ApplyLabelSelection = () => {
-    if (isSelectionCountValid(d2DraftLabelIndices.length, 3, 10)) {
-      setD2AppliedLabelIndices([...d2DraftLabelIndices])
+    if (isSelectionCountValid(d2DraftLabelIndices.length, 1, 10)) {
+      setD2AppliedLabelIndices([...d2DraftLabelIndices].sort((first, second) => first - second))
+      setD2CurrentPage(1)
       setIsD2CustomizeOpen(false)
     }
   }
 
-  const isD2LabelSelectionValid = isSelectionCountValid(d2DraftLabelIndices.length, 3, 10)
+  const isD2LabelSelectionValid = isSelectionCountValid(d2DraftLabelIndices.length, 1, 10)
 
   const handleD2ResetDefault = () => {
     const defaultMetrics = d2MetricHeaders.slice(0, 1)
-    const defaultLabelIndices = createSequentialIndices(Math.min(10, d2AllLabels.length))
+    const defaultLabelIndices = createSequentialIndices(
+      Math.min(ROWS_PER_PAGE, d2AllLabels.length),
+    )
     setD2DraftMetrics(defaultMetrics)
     setD2AppliedMetrics(defaultMetrics)
     setD2DraftLabelIndices(defaultLabelIndices)
-    setD2AppliedLabelIndices(defaultLabelIndices)
+    setD2AppliedLabelIndices(null)
     setD2CurrentPage(1)
     setIsD2Open(false)
     setIsD2CustomizeOpen(false)
