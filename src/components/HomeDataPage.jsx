@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import {
   buildDatasetFromCsvText,
   downloadDatasetAsExcel,
@@ -19,6 +19,7 @@ function HomeDataPage({
   onContinue,
 }) {
   const fileInputRef = useRef(null)
+  const [isLoading, setIsLoading] = useState(false)
 
   const processCsvText = (text, sourceFileName) => {
     const dataset = buildDatasetFromCsvText(text)
@@ -36,33 +37,48 @@ function HomeDataPage({
   }
 
   const handleUseExistingData = () => {
-    const cached = getCachedDataset()
-    if (cached) {
-      onDataLoaded({
-        fileName: 'DataCsvFile.csv',
-        headers: cached.headers,
-        rows: cached.rows,
-      })
+    if (isLoading) {
       return
     }
 
-    const dataset = buildDatasetFromCsvText(defaultCsvText)
+    setIsLoading(true)
+    window.setTimeout(() => {
+      try {
+        const cached = getCachedDataset()
+        if (cached) {
+          onDataLoaded({
+            fileName: 'DataCsvFile.csv',
+            headers: cached.headers,
+            rows: cached.rows,
+          })
+          return
+        }
 
-    if (dataset.error) {
-      onError(dataset.error)
-      return
-    }
+        const dataset = buildDatasetFromCsvText(defaultCsvText)
 
-    setCachedDataset(dataset.headers, dataset.rows)
+        if (dataset.error) {
+          onError(dataset.error)
+          return
+        }
 
-    onDataLoaded({
-      fileName: 'DataCsvFile.csv',
-      headers: dataset.headers,
-      rows: dataset.rows,
-    })
+        setCachedDataset(dataset.headers, dataset.rows)
+
+        onDataLoaded({
+          fileName: 'DataCsvFile.csv',
+          headers: dataset.headers,
+          rows: dataset.rows,
+        })
+      } finally {
+        setIsLoading(false)
+      }
+    }, 0)
   }
 
   const handleChooseUpload = () => {
+    if (isLoading) {
+      return
+    }
+
     if (fileInputRef.current) {
       fileInputRef.current.click()
     }
@@ -81,17 +97,27 @@ function HomeDataPage({
       return
     }
 
+    setIsLoading(true)
+
     const reader = new FileReader()
 
     reader.onload = () => {
-      const fileText = typeof reader.result === 'string' ? reader.result : ''
-      processCsvText(fileText, selectedFile.name)
-      event.target.value = ''
+      try {
+        const fileText = typeof reader.result === 'string' ? reader.result : ''
+        processCsvText(fileText, selectedFile.name)
+        event.target.value = ''
+      } finally {
+        setIsLoading(false)
+      }
     }
 
     reader.onerror = () => {
-      onError('Could not read the selected file. Try again.')
-      event.target.value = ''
+      try {
+        onError('Could not read the selected file. Try again.')
+        event.target.value = ''
+      } finally {
+        setIsLoading(false)
+      }
     }
 
     reader.readAsText(selectedFile)
@@ -143,16 +169,32 @@ function HomeDataPage({
       </header>
 
       <section className="page-content">
-        <article className="panel">
+        <article className="panel panel--home">
+          {isLoading && (
+            <div className="home-loader-overlay" role="status" aria-live="polite">
+              <div className="home-loader-overlay__spinner" aria-hidden="true" />
+              <p>Processing data, please wait...</p>
+            </div>
+          )}
           <h2>Choose Data Source</h2>
           <p>Pick existing repository data or upload a new CSV file before opening dashboards.</p>
 
           <div className="home-actions">
-            <button type="button" className="home-actions__primary" onClick={handleUseExistingData}>
+            <button
+              type="button"
+              className="home-actions__primary"
+              onClick={handleUseExistingData}
+              disabled={isLoading}
+            >
               Use Existing Data
             </button>
 
-            <button type="button" className="home-actions__secondary" onClick={handleChooseUpload}>
+            <button
+              type="button"
+              className="home-actions__secondary"
+              onClick={handleChooseUpload}
+              disabled={isLoading}
+            >
               Upload New Data
             </button>
 
@@ -168,7 +210,7 @@ function HomeDataPage({
               type="button"
               className="csv-upload__download"
               onClick={() => downloadDatasetAsExcel(csvHeaders, csvRows, fileName)}
-              disabled={!hasData}
+              disabled={isLoading || !hasData}
             >
               Download Excel
             </button>
@@ -177,7 +219,7 @@ function HomeDataPage({
               type="button"
               className="home-actions__clear"
               onClick={handleClear}
-              disabled={!hasData && !csvError}
+              disabled={isLoading || (!hasData && !csvError)}
             >
               Clear Data
             </button>
@@ -189,7 +231,7 @@ function HomeDataPage({
                 type="button"
                 className={`home-actions__continue ${!hasData ? 'home-actions__continue--spaced' : ''}`}
                 onClick={onContinue}
-                disabled={!hasData}
+                disabled={isLoading || !hasData}
               >
                 Continue to Dashboards
               </button>
